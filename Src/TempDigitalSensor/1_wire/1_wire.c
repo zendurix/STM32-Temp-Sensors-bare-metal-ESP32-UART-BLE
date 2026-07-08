@@ -45,7 +45,7 @@ void wire1_read_time_slot_init() {
 }
 
 uint8_t wire1_read_bit(void) {
-	uint8_t bit =  GPIOA->IDR & GPIO_IDR_ID0;
+	uint8_t bit = GPIOA->IDR & GPIO_IDR_ID0;
 	return bit;
 }
 

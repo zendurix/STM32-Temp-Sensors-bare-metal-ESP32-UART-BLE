@@ -8,7 +8,6 @@
 // PC0 (A5 on board) -> ADC1_IN1
 
 void TempAnalogSens_initialize(void) {
-
 	// PC0
 
 	// enable clock on GPIO C
@@ -42,7 +41,6 @@ void TempAnalogSens_initialize(void) {
 	ADC1->CFGR1 &= ~(ADC_CFGR1_DMAEN);
 
 	// rm suggest calibrating 8 times and getting average from it
-
 	uint16_t calibration_factors_sum = 0;
 	for (int i = 0; i < 8; i++) {
 		ADC1->CR |= ADC_CR_ADCAL;
@@ -61,10 +59,6 @@ void TempAnalogSens_initialize(void) {
 	ADC1->CALFACT = (calibration_factor << ADC_CALFACT_CALFACT_Pos)
 			& ADC_CALFACT_CALFACT_Msk;
 
-//	ADC1->CR |= ADC_CR_ADCAL;
-	//while (ADC1->CR & ADC_CR_ADCAL)
-	//	;
-
 	// 4. Enable ADC // use ADDIS to disable
 	ADC1->CR |= ADC_CR_ADEN;
 	while (ADC1->ISR & ADC_ISR_ADRDY) {
@@ -74,10 +68,10 @@ void TempAnalogSens_initialize(void) {
 	// 5. Sampling config  0 - use SMP1 for channel 1
 	ADC1->SMPR &= ~(ADC_SMPR_SMPSEL1);
 	ADC1->SMPR &= ~(ADC_SMPR_SMP1);
-	// 0b110 - 79.5 ADC clock cycles
+	// 0b111 - 160.5 ADC clock cycles
 	ADC1->SMPR |= (0b111 << ADC_SMPR_SMP1_Pos);
 
-	// 6. Select input channel - 0 and turn off all other channels (for now)
+	// 6. Select input channel - 0
 	ADC1->CHSELR = ADC_CHSELR_CHSEL0;
 
 	// 7. turn on ADC
@@ -85,7 +79,6 @@ void TempAnalogSens_initialize(void) {
 }
 
 uint16_t TempAnalogSens_get_ADC_reading(void) {
-
 	// start conversion
 	ADC1->CR |= ADC_CR_ADSTART;
 
@@ -97,6 +90,7 @@ uint16_t TempAnalogSens_get_ADC_reading(void) {
 }
 
 float TempAnalogSens_get_temperature(void) {
+	ADC1->CHSELR = ADC_CHSELR_CHSEL0;
 	uint16_t adc_value = TempAnalogSens_get_ADC_reading();
 
 #define VCC 3.3f
@@ -114,3 +108,38 @@ float TempAnalogSens_get_temperature(void) {
 
 	return (tempC);
 }
+
+float GetInternalTemp(void) {
+	ADC1->CHSELR = ADC_CHSELR_CHSEL11;
+
+	ADC1->SMPR &= ~(ADC_SMPR_SMPSEL11);
+
+	ADC1_COMMON->CCR |= ADC_CCR_TSEN;
+
+	uint16_t adc_value = TempAnalogSens_get_ADC_reading();
+
+	// calibration values from STM Datasheet
+	const uint16_t TS_CAL1 = *(uint16_t*) (0x1FFF6E68);
+	const uint16_t TS_CAL2 = *(uint16_t*) (0x1FFF6E6A);
+	const uint16_t TS_CAL1_TEMP = 30;
+	const uint16_t TS_CAL2_TEMP = 130;
+
+	/* calculations from reference manual
+	 ((TS_CAL2_TEMP - TS_CAL1_TEMP) / (TS_CAL2 - TS_CAL1))
+	 (adc_value - TS_CAL1) + TS_CAL1_TEMP;
+	 **/
+
+	// calculations from reference manual
+	return ((float)(100) / (float)(TS_CAL2 - TS_CAL1)) * ((float)(adc_value) - (float)(TS_CAL1)) + (float)(TS_CAL1_TEMP);
+}
+
+float GetInternalTemp2(void) {
+	ADC1->CHSELR = ADC_CHSELR_CHSEL11;
+
+	ADC1->SMPR &= ~(ADC_SMPR_SMPSEL11);
+
+	ADC1_COMMON->CCR |= ADC_CCR_TSEN;
+
+	return TempAnalogSens_get_ADC_reading();
+}
+

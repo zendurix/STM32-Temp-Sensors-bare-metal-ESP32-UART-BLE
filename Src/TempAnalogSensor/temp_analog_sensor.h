@@ -13,5 +13,8 @@ uint16_t TempAnalogSens_get_ADC_reading(void);
 
 float TempAnalogSens_get_temperature(void);
 
+float GetInternalTemp(void);
+float GetInternalTemp2(void);
+
 
 #endif /* TEMPANALOGSENSOR_TEMP_ANALOG_SENSOR_H */

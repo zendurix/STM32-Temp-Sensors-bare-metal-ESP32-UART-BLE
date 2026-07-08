@@ -22,8 +22,6 @@
 
  */
 
-
-
 #include "TempDigitalSensor/1_wire/1_wire.h"
 
 #define TOGGLE_PROGRAM_MODE_PRESS_TIME 1000
@@ -43,6 +41,7 @@ int main(void) {
 
 	float temp_analog = 10.213;
 	float temp_digital = 66.213;
+	float temp_cpu = 101.11;
 	uint8_t byte_digi;
 	bool temp_changed = true;
 
@@ -53,13 +52,12 @@ int main(void) {
 
 	Display_set_mode(display, DisplayMode_TEXT);
 
-
+	G_USER_button_state = ButtonState_PRESSED;
 
 	while (true) {
 		USER_button_update();
 		if (temp_changed) {
 			char buff[20];
-
 
 			Display_clear_text(display);
 			Display_add_string_to_text(display, "-=TEMPERATURE=-", 0, 0);
@@ -74,31 +72,31 @@ int main(void) {
 			snprintf(buff, 32, "%d.%02d%c", t_x100 / 100, t_x100 % 100, 'C');
 			Display_add_string_to_text(display, buff, 3, 2);
 
-
-			char buff2[9];
-
-		    for (int i = 0; i < 8; i++)
-		    {
-		    	buff2[i] = (byte_digi & (1 << (7 - i))) ? '1' : '0';
-		    }
-
-		    buff2[8] = '\0';
-
-			Display_add_string_to_text(display, buff2, 0, 3);
+			Display_add_string_to_text(display, "CPU: ", 0, 3);
+			t_x100 = temp_cpu * 100;
+			snprintf(buff, 32, "%d.%02d%c", t_x100 / 100, t_x100 % 100, 'C');
+			Display_add_string_to_text(display, buff, 5, 3);
 
 			temp_changed = false;
 		}
+
+		Delay(1000);
+
+		temp_digital = TempDigitalSens_get_temperature(&byte_digi);
+		temp_analog = TempAnalogSens_get_temperature();
+		temp_cpu = GetInternalTemp();
+		temp_changed = true;
 
 		if (G_USER_button_state == ButtonState_RELEASED) {
 			if (G_USER_button_time_pressed_ms > TOGGLE_PROGRAM_MODE_PRESS_TIME) {
 				Display_toggle_on_off(display);
 			} else {
-				temp_analog = TempAnalogSens_get_temperature();
 				temp_digital = TempDigitalSens_get_temperature(&byte_digi);
+				temp_analog = TempAnalogSens_get_temperature(); // TempAnalogSens_get_temperature();
+				temp_cpu = GetInternalTemp();
 				temp_changed = true;
 			}
 		}
-
 		Display_update(display, G_Tick);
 	}
 }

@@ -102,7 +102,6 @@ float TempDigitalSens_get_temperature(uint8_t* byte) {
 		wire1_read_time_slot_init();
 	}
 	Delay_us(60);
-	//Delay_us(8000);
 
 	uint8_t SCRATCHPAD[9] = { 0 };
 
