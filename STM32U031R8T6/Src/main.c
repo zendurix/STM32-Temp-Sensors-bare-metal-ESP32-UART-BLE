@@ -11,14 +11,20 @@
 #include "Display/display.h"
 #include "TempAnalogSensor/temp_analog_sensor.h"
 #include "TempDigitalSensor/temp_digital_sensor.h"
+#include "UART/UART.h"
 
 /*
  Board used - Nucleo STM32U031R8T6.
  Connections:
  OLED VCC -> Board 3V3
  OLED GND -> Board GND
- OLED SDA -> Board D14 (PB9 on processor)
- OLED SCL -> Board D15 (PB8 on processor)
+
+ OLED SDA -> Board D14 (GPIO PB9)
+ OLED SCL -> Board D15 (GPIO PB8)
+
+ ESP32 UART RX -> Board D13 (GPIO PA5)
+ ESP32 UART TX -> Board D11 (GPIO PA7)
+ ESP32 GND     -> Board GND
 
  */
 
@@ -38,6 +44,8 @@ int main(void) {
 	TempAnalogSens_initialize();
 	TempDigitalSens_initialize();
 
+	UART_initialize();
+
 	float temp_analog = 10.213;
 	float temp_digital = 66.213;
 	float temp_cpu = 101.11;
@@ -53,7 +61,30 @@ int main(void) {
 
 	G_USER_button_state = ButtonState_PRESSED;
 
+	// LD4_toggle();
+
+	Display_toggle_on_off(display);
+
+	float temp = TempAnalogSens_get_temperature();
+
 	while (true) {
+		temp_digital = TempDigitalSens_get_temperature(&byte_digi);
+		temp_analog = TempAnalogSens_get_temperature();
+		if ((temp_digital < (temp_analog + 5))
+				&& (temp_digital > (temp_analog - 5))) {
+			temp = temp_analog;
+		}
+
+		char buff[20];
+		int t_x100 = temp * 100;
+		snprintf(buff, 32, "%d.%02d%c", t_x100 / 100, t_x100 % 100, 'C');
+		UART_send_string(buff);
+
+		Delay(20000);
+
+		continue;
+		///////////////////////////////////////////
+
 		USER_button_update();
 		if (temp_changed) {
 			char buff[20];
@@ -87,6 +118,12 @@ int main(void) {
 				temp_analog = TempAnalogSens_get_temperature();
 				temp_cpu = GetInternalTemp();
 				temp_changed = true;
+
+				char buff[20];
+				int t_x100 = temp_analog * 100;
+				snprintf(buff, 32, "%d.%02d%c", t_x100 / 100, t_x100 % 100,
+						'C');
+				UART_send_string(buff);
 			}
 		}
 		Display_update(display, G_Tick);
